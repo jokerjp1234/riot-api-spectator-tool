@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riot API ソロランク監視ツール</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Riot API ソロランク監視ツール</h1>
+            <p>プロプレイヤーのソロランクを監視して観戦データを自動取得</p>
+        </div>
+
+        <div class="api-config card">
+            <h2>⚙️ API設定</h2>
+            <div class="form-group">
+                <label for="apiKey">Riot API Key</label>
+                <input type="password" id="apiKey" placeholder="Personal API Keyを入力してください">
+            </div>
+            <button class="btn" onclick="setApiKey()">API Key設定</button>
+            <div id="apiStatus" style="margin-top: 10px; font-weight: bold;"></div>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>👤 プレイヤー追加</h2>
+                <div class="form-group">
+                    <label for="gameName">ゲーム名</label>
+                    <input type="text" id="gameName" placeholder="例: Hide on bush">
+                </div>
+                <div class="form-group">
+                    <label for="tagLine">タグライン</label>
+                    <input type="text" id="tagLine" placeholder="例: KR1">
+                </div>
+                <div class="form-group">
+                    <label for="region">リージョン</label>
+                    <select id="region">
+                        <option value="">リージョンを選択</option>
+                        <option value="kr">Korea (kr)</option>
+                        <option value="euw1">Europe West (euw1)</option>
+                        <option value="eun1">Europe Nordic East (eun1)</option>
+                        <option value="na1">North America (na1)</option>
+                        <option value="jp1">Japan (jp1)</option>
+                        <option value="br1">Brazil (br1)</option>
+                        <option value="la1">Latin America North (la1)</option>
+                        <option value="la2">Latin America South (la2)</option>
+                        <option value="oc1">Oceania (oc1)</option>
+                        <option value="tr1">Turkey (tr1)</option>
+                        <option value="ru">Russia (ru)</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="addPlayer()">プレイヤー追加</button>
+                <button class="btn" onclick="addProPlayers()">プロプレイヤー一括追加</button>
+            </div>
+
+            <div class="card">
+                <h2>🎯 監視制御</h2>
+                <div id="monitoringStatus" class="monitoring-status status-inactive">
+                    監視停止中
+                </div>
+                <button class="btn btn-success" onclick="startMonitoring()">監視開始</button>
+                <button class="btn btn-danger" onclick="stopMonitoring()">監視停止</button>
+                <button class="btn" onclick="clearPlayers()">全プレイヤー削除</button>
+                <div style="margin-top: 15px;">
+                    <small>監視間隔: 10秒</small>
+                </div>
+            </div>
+
+            <div class="card player-list">
+                <h2>📋 監視対象プレイヤー (<span id="playerCount">0</span>人)</h2>
+                <div id="playerList">
+                    <p style="color: #888; text-align: center; margin: 20px 0;">監視対象プレイヤーがいません</p>
+                </div>
+            </div>
+
+            <div class="card log-area">
+                <h2>📊 監視ログ</h2>
+                <div id="logContainer">
+                    <div class="log-entry log-info">[システム] ツールが起動しました</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
