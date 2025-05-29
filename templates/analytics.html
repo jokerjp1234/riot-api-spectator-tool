@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析ダッシュボード - Riot API Spectator Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            padding: 20px;
+        }
+        
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: none;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        .card-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 30px 20px;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .player-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .player-item:last-child {
+            border-bottom: none;
+        }
+        
+        .badge-custom {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px 20px;
+            color: #666;
+        }
+        
+        .nav-pills .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 25px;
+        }
+        
+        .back-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="text-white mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        分析ダッシュボード
+                    </h1>
+                    <a href="/" class="back-btn">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        メインページ
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 統計カード -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-number text-primary" id="totalGames">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <div class="stat-label">総ゲーム数</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-number text-success" id="avgDuration">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <div class="stat-label">平均ゲーム時間</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-number text-warning" id="uniquePlayers">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <div class="stat-label">監視プレイヤー数</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-number text-info" id="todayGames">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <div class="stat-label">今日のゲーム数</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- チャートセクション -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>
+                            日別ゲーム数推移
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="dailyGamesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            プレイヤー統計
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="player-list" id="playerStats">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                データ読み込み中...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 詳細分析 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-pills card-header-pills" id="analysisTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">
+                                    概要
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="trends-tab" data-bs-toggle="pill" data-bs-target="#trends" type="button" role="tab">
+                                    トレンド
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="players-tab" data-bs-toggle="pill" data-bs-target="#players" type="button" role="tab">
+                                    プレイヤー詳細
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="analysisTabContent">
+                            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                                <h6>監視システム概要</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="chart-container">
+                                            <canvas id="gameTypeChart"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="chart-container">
+                                            <canvas id="regionChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="trends" role="tabpanel">
+                                <h6>アクティビティトレンド</h6>
+                                <div class="chart-container">
+                                    <canvas id="hourlyChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="players" role="tabpanel">
+                                <h6>プレイヤー詳細分析</h6>
+                                <div id="playerDetails">
+                                    <div class="loading">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>
+                                        プレイヤーデータ読み込み中...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let dailyGamesChart, gameTypeChart, regionChart, hourlyChart;
+
+        // データ読み込み
+        async function loadAnalyticsData() {
+            try {
+                const response = await fetch('/api/get_analytics_data');
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                updateStatCards(data);
+                createCharts(data);
+                updatePlayerStats(data);
+                
+            } catch (error) {
+                console.error('分析データ読み込みエラー:', error);
+                showError('データの読み込みに失敗しました: ' + error.message);
+            }
+        }
+
+        // 統計カード更新
+        function updateStatCards(data) {
+            document.getElementById('totalGames').textContent = data.basic_stats.total_games;
+            document.getElementById('uniquePlayers').textContent = data.basic_stats.unique_players;
+            
+            // 平均ゲーム時間を分:秒形式で表示
+            const avgMinutes = Math.floor(data.basic_stats.avg_duration / 60);
+            const avgSeconds = Math.floor(data.basic_stats.avg_duration % 60);
+            document.getElementById('avgDuration').textContent = `${avgMinutes}:${avgSeconds.toString().padStart(2, '0')}`;
+            
+            // 今日のゲーム数
+            const today = new Date().toISOString().split('T')[0];
+            const todayGames = data.daily_games.find(d => d.date === today);
+            document.getElementById('todayGames').textContent = todayGames ? todayGames.games : 0;
+        }
+
+        // チャート作成
+        function createCharts(data) {
+            // 日別ゲーム数チャート
+            const ctx1 = document.getElementById('dailyGamesChart').getContext('2d');
+            dailyGamesChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: data.daily_games.map(d => d.date),
+                    datasets: [{
+                        label: 'ゲーム数',
+                        data: data.daily_games.map(d => d.games),
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // ゲームタイプ円グラフ（サンプルデータ）
+            const ctx2 = document.getElementById('gameTypeChart').getContext('2d');
+            gameTypeChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ソロランク', 'その他'],
+                    datasets: [{
+                        data: [data.basic_stats.total_games, 0],
+                        backgroundColor: [
+                            'rgb(102, 126, 234)',
+                            'rgb(118, 75, 162)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        // プレイヤー統計更新
+        function updatePlayerStats(data) {
+            const container = document.getElementById('playerStats');
+            
+            if (data.player_stats.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted">プレイヤーデータがありません</div>';
+                return;
+            }
+            
+            const html = data.player_stats.map((player, index) => `
+                <div class="player-item">
+                    <div>
+                        <strong>${player.game_name}#${player.tag_line}</strong>
+                        <div class="small text-muted">
+                            平均時間: ${Math.floor(player.avg_duration / 60)}:${Math.floor(player.avg_duration % 60).toString().padStart(2, '0')}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge-custom">${player.games_played} ゲーム</span>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+
+        // エラー表示
+        function showError(message) {
+            const errorHtml = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            `;
+            document.querySelector('.container').insertAdjacentHTML('afterbegin', errorHtml);
+        }
+
+        // 自動更新
+        function startAutoRefresh() {
+            setInterval(loadAnalyticsData, 30000); // 30秒ごとに更新
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAnalyticsData();
+            startAutoRefresh();
+        });
+
+        // タブ切り替え時の処理
+        document.addEventListener('shown.bs.tab', function(e) {
+            // チャートのサイズ調整
+            if (dailyGamesChart) dailyGamesChart.resize();
+            if (gameTypeChart) gameTypeChart.resize();
+            if (regionChart) regionChart.resize();
+            if (hourlyChart) hourlyChart.resize();
+        });
+    </script>
+</body>
+</html>
