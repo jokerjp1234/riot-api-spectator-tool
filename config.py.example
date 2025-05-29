@@ -1,21 +1,25 @@
-# Riot API設定
-# このファイルをconfig.pyにコピーして使用してください
-
-# Riot Developer Portalで取得したAPI Key
-# https://developer.riotgames.com/
-RIOT_API_KEY = "your_riot_api_key_here"
-
-# 監視設定
-MONITOR_INTERVAL = 10  # 監視間隔（秒）
-
-# データ保存設定
-DATA_DIR = "spectator_data"  # 観戦データ保存ディレクトリ
+# Riot API 設定
+RIOT_API_KEY = "YOUR_RIOT_API_KEY_HERE"
 
 # Webサーバー設定
-HOST = "127.0.0.1"  # ローカルのみアクセス
-PORT = 5000         # ポート番号
-DEBUG = True        # デバッグモード
+HOST = "127.0.0.1"
+PORT = 5000
+DEBUG = True
+SECRET_KEY = "your-secret-key-change-this-in-production"
+
+# 監視設定
+MONITOR_INTERVAL = 10  # 秒
+
+# データ保存設定
+DATA_DIR = "spectator_data"
+
+# API制限設定 (Personal API Key用)
+RATE_LIMIT_CALLS = 100
+RATE_LIMIT_SECONDS = 120
+
+# データベース設定
+DATABASE_PATH = "spectator_data/spectator_data.db"
 
 # ログ設定
-LOG_LEVEL = "INFO"  # ログレベル (DEBUG, INFO, WARNING, ERROR)
-LOG_FILE = "riot_api_tool.log"  # ログファイル名
+LOG_LEVEL = "INFO"
+LOG_FILE = "spectator_data/app.log"
