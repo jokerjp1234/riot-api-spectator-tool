@@ -1,89 +1,218 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riot API ソロランク監視ツール</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎮 Riot API ソロランク監視ツール</h1>
-            <p>プロプレイヤーのソロランクを監視して観戦データを自動取得</p>
-        </div>
+                                        onclick="removePlayer('${player.game_name}', '${player.tag_line}')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
-        <div class="api-config card">
-            <h2>⚙️ API設定</h2>
-            <div class="form-group">
-                <label for="apiKey">Riot API Key</label>
-                <input type="password" id="apiKey" placeholder="Personal API Keyを入力してください">
-            </div>
-            <button class="btn" onclick="setApiKey()">API Key設定</button>
-            <div id="apiStatus" style="margin-top: 10px; font-weight: bold;"></div>
-        </div>
+            container.innerHTML = playersHtml;
+        }
 
-        <div class="main-content">
-            <div class="card">
-                <h2>👤 プレイヤー追加</h2>
-                <div class="form-group">
-                    <label for="gameName">ゲーム名</label>
-                    <input type="text" id="gameName" placeholder="例: Hide on bush">
-                </div>
-                <div class="form-group">
-                    <label for="tagLine">タグライン</label>
-                    <input type="text" id="tagLine" placeholder="例: KR1">
-                </div>
-                <div class="form-group">
-                    <label for="region">リージョン</label>
-                    <select id="region">
-                        <option value="">リージョンを選択</option>
-                        <option value="kr">Korea (kr)</option>
-                        <option value="euw1">Europe West (euw1)</option>
-                        <option value="eun1">Europe Nordic East (eun1)</option>
-                        <option value="na1">North America (na1)</option>
-                        <option value="jp1">Japan (jp1)</option>
-                        <option value="br1">Brazil (br1)</option>
-                        <option value="la1">Latin America North (la1)</option>
-                        <option value="la2">Latin America South (la2)</option>
-                        <option value="oc1">Oceania (oc1)</option>
-                        <option value="tr1">Turkey (tr1)</option>
-                        <option value="ru">Russia (ru)</option>
-                    </select>
-                </div>
-                <button class="btn" onclick="addPlayer()">プレイヤー追加</button>
-                <button class="btn" onclick="addProPlayers()">プロプレイヤー一括追加</button>
-            </div>
+        // プレイヤー削除
+        async function removePlayer(gameName, tagLine) {
+            if (!confirm(`${gameName}#${tagLine} を監視対象から削除しますか？`)) {
+                return;
+            }
 
-            <div class="card">
-                <h2>🎯 監視制御</h2>
-                <div id="monitoringStatus" class="monitoring-status status-inactive">
-                    監視停止中
-                </div>
-                <button class="btn btn-success" onclick="startMonitoring()">監視開始</button>
-                <button class="btn btn-danger" onclick="stopMonitoring()">監視停止</button>
-                <button class="btn" onclick="clearPlayers()">全プレイヤー削除</button>
-                <div style="margin-top: 15px;">
-                    <small>監視間隔: 10秒</small>
-                </div>
-            </div>
+            try {
+                const response = await fetch('/api/remove_player', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        game_name: gameName,
+                        tag_line: tagLine
+                    })
+                });
 
-            <div class="card player-list">
-                <h2>📋 監視対象プレイヤー (<span id="playerCount">0</span>人)</h2>
-                <div id="playerList">
-                    <p style="color: #888; text-align: center; margin: 20px 0;">監視対象プレイヤーがいません</p>
-                </div>
-            </div>
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('プレイヤーを削除しました', 'success');
+                    addLog('info', `プレイヤー ${gameName}#${tagLine} を削除しました`);
+                } else {
+                    showNotification('プレイヤー削除失敗', 'error');
+                    addLog('error', 'プレイヤー削除エラー: ' + data.error);
+                }
+            } catch (error) {
+                showNotification('プレイヤー削除エラー', 'error');
+                addLog('error', 'プレイヤー削除エラー: ' + error.message);
+            }
+        }
 
-            <div class="card log-area">
-                <h2>📊 監視ログ</h2>
-                <div id="logContainer">
-                    <div class="log-entry log-info">[システム] ツールが起動しました</div>
-                </div>
-            </div>
-        </div>
-    </div>
+        // 全プレイヤー削除
+        async function clearAllPlayers() {
+            if (!confirm('すべてのプレイヤーを監視対象から削除しますか？')) {
+                return;
+            }
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+            // 現在のプレイヤーリストを取得
+            try {
+                const response = await fetch('/api/get_players');
+                const data = await response.json();
+                
+                // 各プレイヤーを削除
+                for (const player of data.players) {
+                    await removePlayer(player.game_name, player.tag_line);
+                    await new Promise(resolve => setTimeout(resolve, 100)); // 少し待機
+                }
+                
+                showNotification('全プレイヤーを削除しました', 'success');
+                addLog('info', '全プレイヤーを削除しました');
+            } catch (error) {
+                showNotification('全プレイヤー削除エラー', 'error');
+                addLog('error', '全プレイヤー削除エラー: ' + error.message);
+            }
+        }
+
+        // 監視状態更新
+        function updateMonitoringStatus(monitoring) {
+            const statusElement = document.getElementById('monitoringStatus');
+            isMonitoring = monitoring;
+            
+            if (monitoring) {
+                statusElement.className = 'monitoring-status status-active';
+                statusElement.innerHTML = '<i class="fas fa-play-circle me-2"></i>監視中...';
+            } else {
+                statusElement.className = 'monitoring-status status-inactive';
+                statusElement.innerHTML = '<i class="fas fa-pause-circle me-2"></i>監視停止中';
+            }
+        }
+
+        // 接続状態更新
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            
+            if (connected) {
+                statusElement.className = 'connection-status connected';
+                statusElement.innerHTML = '<i class="fas fa-wifi me-1"></i>接続済み';
+            } else {
+                statusElement.className = 'connection-status disconnected';
+                statusElement.innerHTML = '<i class="fas fa-wifi me-1"></i>切断中';
+            }
+        }
+
+        // ログ追加
+        function addLog(type, message) {
+            const container = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            
+            let icon = 'fas fa-info-circle';
+            switch (type) {
+                case 'success':
+                    icon = 'fas fa-check-circle';
+                    break;
+                case 'error':
+                    icon = 'fas fa-exclamation-circle';
+                    break;
+                case 'game':
+                    icon = 'fas fa-gamepad';
+                    break;
+            }
+            
+            logEntry.innerHTML = `
+                <i class="${icon} me-2"></i>
+                [${timestamp}] ${message}
+            `;
+            
+            container.insertBefore(logEntry, container.firstChild);
+            
+            // ログが多くなったら古いものを削除
+            const logs = container.querySelectorAll('.log-entry');
+            if (logs.length > 50) {
+                container.removeChild(logs[logs.length - 1]);
+            }
+        }
+
+        // ログクリア
+        function clearLogs() {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = `
+                <div class="log-entry log-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    [システム] ログをクリアしました
+                </div>
+            `;
+        }
+
+        // 通知表示
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification notification-${type}`;
+            
+            // 表示
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            // 3秒後に非表示
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // キーボードショートカット
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter でプレイヤー追加
+            if (e.ctrlKey && e.key === 'Enter') {
+                const activeElement = document.activeElement;
+                if (activeElement.id === 'gameName' || activeElement.id === 'tagLine' || activeElement.id === 'region') {
+                    addPlayer();
+                }
+            }
+            
+            // Ctrl+M で監視開始/停止切り替え
+            if (e.ctrlKey && e.key === 'm') {
+                e.preventDefault();
+                if (isMonitoring) {
+                    stopMonitoring();
+                } else {
+                    startMonitoring();
+                }
+            }
+        });
+
+        // Enter キーでAPI Key設定
+        document.getElementById('apiKey').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                setApiKey();
+            }
+        });
+
+        // プレイヤー追加フォームでEnter キー処理
+        ['gameName', 'tagLine'].forEach(id => {
+            document.getElementById(id).addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const nextField = id === 'gameName' ? 'tagLine' : 'region';
+                    document.getElementById(nextField).focus();
+                }
+            });
+        });
+
+        document.getElementById('region').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addPlayer();
+            }
+        });
+
+        // 定期的なデータ更新
+        setInterval(async function() {
+            try {
+                const response = await fetch('/api/get_players');
+                const data = await response.json();
+                updatePlayerList(data.players);
+                updateMonitoringStatus(data.monitoring);
+            } catch (error) {
+                // エラーは無視（接続が切れている可能性）
+            }
+        }, 30000); // 30秒ごとに更新
+    </script>
 </body>
 </html>
